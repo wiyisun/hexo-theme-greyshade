@@ -28,6 +28,82 @@
     <script>
       let searchData = <%- _searchData %>
 
+      let searchMod = {
+        match:false,
+        contentLen:100,
+        init(input){
+          input.addEventListener('input', (e)=>{
+            let searchText = input.value.trim().toLowerCase();            
+            this.checkFromTitle(searchText, searchData)
+          });
+        },
+        checkFromTitle(searchText,DB){
+          let resultArr = []
+          if (searchText) {
+
+            let searchTextArr = searchText.split(/[\s\-]+/);
+            if (searchTextArr.length > 1) {
+              searchTextArr.push(searchText);
+            }
+
+
+            resultArr = DB.filter((item)=>{
+              let articleTitle = item.title.trim().toLowerCase();
+
+              let bool = false
+              searchTextArr.map((one)=>{ // 包含至少一个关键字
+                
+                bool = articleTitle.indexOf(one) > -1;
+                if (!this.match && bool) {
+                  this.match = true
+                }
+
+
+              })
+              
+              if (bool) {              
+                let keyWordHtml = this.keyWordTpl().replace(/{{searchText}}/, searchText),
+                  tempTitleArr = articleTitle.split(searchText),
+                  highlightTitle = tempTitleArr.join(keyWordHtml);
+
+                item._title = highlightTitle;
+              }
+              return bool
+            })
+          }
+          
+          this.render(JresList, Jcount, resultArr)
+        },
+        render(ele,countEle,resultArr){
+          let htmlArr = resultArr.map((item)=>{
+            let content = item.content.slice(0,this.contentLen)
+            return this.itemTpl()
+              .replace(/{{title}}/g, item._title||item.title)
+              .replace(/{{url}}/g, item.url)
+              .replace(/{{content}}/g, content)
+          })
+
+          ele.innerHTML = htmlArr.join('')
+          countEle.innerHTML = htmlArr.length
+        },
+        itemTpl(){
+          return `
+            <li class="item">
+              <a target="_blank" href="{{url}}">
+              <p class="search-result-title">{{title}}</p>
+              <p class="search-result">{{content}}<b class="search-keyword"></b></p>
+              </a>
+            </li>
+          `;
+        },
+        keyWordTpl(){
+          return `<b class="search-keyword">{{searchText}}</b>`
+        }
+      }
+      searchMod.init(Jinput)
+
+      
+
       function getIndexByWord(word, text, caseSensitive) {
         var wordLen = word.length;
 
@@ -247,7 +323,8 @@
           }
         });
       }
-      searchFunc('Jinput', 'JresList')
+      
+      // searchFunc('Jinput', 'JresList')
     </script>
   </div>
 </article>
